@@ -18,6 +18,7 @@ to do:
     [ ] split implementation into files
 
 """
+import click
 from dataclasses import dataclass
 from itertools import chain
 from numbers import Number
@@ -178,8 +179,28 @@ def eval_line(binds, iterable):
     return result
 
 
-if __name__ == '__main__':
+def run_from_input(files):
     binds = builtins()
-    for exprs in parse_all(fileinput.input()):
+    for exprs in parse_all(fileinput.input(files)):
         print(eval_line(binds, exprs))
-    #sys.stdout.write(output)
+
+
+def run_interactive():
+    binds = builtins()
+    while True:
+        line = input('pylisp>')
+        print(eval_line(binds, parse_all(line)))
+
+
+@click.command()
+@click.argument('files', nargs=-1)
+@click.option('-i', '--interactive', 'interactive')
+def run(files, interactive):
+    if interactive:
+        run_interactive()
+    else:
+        run_from_input(files)
+
+
+if __name__ == '__main__':
+    run()
