@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""
+'''
 We want you to make this a postfix Lisp instead of a traditional prefix Lisp.
 Write a basic postfix Lisp interpreter that implements a subset of the Lisp
 special forms. (here’s a good basic description of a basic Lisp)
@@ -14,26 +14,21 @@ to do:
     [x] lambda recurse (e.g., fib)
     [x] scope
     [x] improve repl
+    [x] handling multi file inputs
     [ ] add signatures
-    [ ] split implementation into files
+    [ ] support for multi line inputs in repl
 
-"""
+'''
 import click
 from dataclasses import dataclass
-from itertools import chain
 from numbers import Number
-from operator import add, sub, mul, truediv, gt
-from pprint import pprint
-from typing import Dict, List, Any
+import operator as op
+from typing import Any, Callable, Dict, List
 import fileinput
 import sys
 
 
 PROMPT = 'pyl> '
-
-
-def is_number(value):
-    return isinstance(value, Number)
 
 
 @dataclass(frozen=True)
@@ -43,7 +38,7 @@ class Symbol:
 
 @dataclass(frozen=True)
 class Lambda:
-    binds: Dict
+    binds: Dict[str, Callable]
     params: List
     body: Any
 
@@ -53,26 +48,33 @@ class Lambda:
         return eval_expr(binds, self.body)
 
 
-@dataclass(frozen=True)
-class Binds:
-    '''Lookups of value in nearest scope where symbol is bound'''
+class SignalEnd(Exception):
+    '''Signal end of a expression'''
+
+
+def is_number(value):
+    return isinstance(value, Number)
 
 
 def is_symbol(value):
     return isinstance(value, Symbol)
 
 
-def is_nil(value):
+def is_nil(value: Any):
     return value is None
 
 
 def builtins():
     return {
-        '+': add,
-        '-': sub,
-        '*': mul,
-        '/': truediv,
-        '>': gt,
+        '+': op.add,
+        '-': op.sub,
+        '*': op.mul,
+        '/': op.truediv,
+        '//': op.floordiv,
+        '>': op.gt,
+        '<': op.lt,
+        '>=': op.ge,
+        '<=': op.le,
         'eq?': lambda a, b: a == b,
         'atom?': lambda a: is_symbol(a) or is_number(a) or is_nil(a),
         'cons': lambda a, b: [a] + b,
@@ -140,10 +142,6 @@ def symbolize(token):
     return Symbol(token)
 
 
-class SignalEnd(Exception):
-    '''Signal end of a expression'''
-
-
 def parse_line(line: str) -> List:
     def _parse(tokens):
         for token in tokens:
@@ -182,12 +180,13 @@ def run_from_input(files):
     if files:
         for file in files:
             with open(file) as fh:
+                click.secho(file, fg='yellow')
                 exprs = parse_line(''.join(fh.readlines()))
-                print(eval_line(binds, exprs))
+                click.echo(eval_line(binds, exprs))
         return
     lines = ''.join(fileinput.input())
     exprs = parse_line(lines)
-    print(eval_line(binds, exprs))
+    click.echo(eval_line(binds, exprs))
 
 
 def run_interactive():
@@ -203,13 +202,13 @@ def run_interactive():
         except AttributeError as e:
             print('Non symbol in final position')
         except Exception as e:
-            print(f'{e.__class__}: {e}')
+            print(e)
 
 
 @click.command()
 @click.argument('files', nargs=-1)
 @click.option('--interactive/--no-interactive', '-i', default=False)
-def run(files, interactive):
+def run(files: List, interactive):
     if interactive:
         run_interactive()
     else:
