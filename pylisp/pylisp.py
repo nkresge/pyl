@@ -13,7 +13,7 @@ to do:
     [x] if
     [x] lambda recurse (e.g., fib)
     [x] scope
-    [ ] improve repl
+    [x] improve repl
     [ ] add signatures
     [ ] split implementation into files
 
@@ -27,6 +27,9 @@ from pprint import pprint
 from typing import Dict, List, Any
 import fileinput
 import sys
+
+
+PROMPT = 'pyl> '
 
 
 def is_number(value):
@@ -47,7 +50,7 @@ class Lambda:
     def __call__(self, *args):
         binds = self.binds.copy()  # avoid copy
         binds.update({param.val: arg for param, arg in zip(self.params, args)})
-        return evaluate(binds, self.body)
+        return eval_expr(binds, self.body)
 
 
 @dataclass(frozen=True)
@@ -79,7 +82,7 @@ def builtins():
     }.copy()
 
 
-def evaluate(binds, expr):
+def eval_expr(binds, expr):
     if is_number(expr):
         return expr
     if is_symbol(expr):
@@ -87,15 +90,14 @@ def evaluate(binds, expr):
     op, rest = expr[-1], expr[:-1]
     if op.val == 'define':  # ('pi' 3.14 define)
         symbol, subexpr = rest[0], rest[1]
-        binds[symbol.val] = evaluate(binds, subexpr)
-        pprint(binds)
+        binds[symbol.val] = eval_expr(binds, subexpr)
         return
     if op.val == 'quote':  # ((1 2) quote)
         return rest[0]
     if op.val == 'if':  # (test then else if)
         test, then, else_ = rest
-        subexpr = then if evaluate(binds, test) else else_
-        return evaluate(binds, subexpr)
+        subexpr = then if eval_expr(binds, test) else else_
+        return eval_expr(binds, subexpr)
     if op.val == 'lambda':  # e.g., (name (params body lambda) define)
         try:
             params, body = rest
@@ -103,8 +105,8 @@ def evaluate(binds, expr):
             body = rest
             params = []
         return Lambda(binds, params, body)
-    f = evaluate(binds, op)
-    call = [evaluate(binds, subexpr) for subexpr in rest]
+    f = eval_expr(binds, op)
+    call = [eval_expr(binds, subexpr) for subexpr in rest]
     return f(*call)
 
 
@@ -116,7 +118,7 @@ def tokenize(string):
                 yield token
                 token = ''
             yield c
-        elif c == ' ':
+        elif c.isspace():
             if token:
                 yield token
                 token = ''
@@ -168,33 +170,45 @@ def parse_line(line: str) -> List:
     return exprs
 
 
-def parse_all(input_):
-    return (parse_line(line.strip()) for line in input_)
-
-
 def eval_line(binds, iterable):
     result = []
     for expr in iterable:
-        result.append(evaluate(binds, expr))
+        result.append(eval_expr(binds, expr))
     return result
 
 
 def run_from_input(files):
     binds = builtins()
-    for exprs in parse_all(fileinput.input(files)):
-        print(eval_line(binds, exprs))
+    if files:
+        for file in files:
+            with open(file) as fh:
+                exprs = parse_line(''.join(fh.readlines()))
+                print(eval_line(binds, exprs))
+        return
+    lines = ''.join(fileinput.input())
+    exprs = parse_line(lines)
+    print(eval_line(binds, exprs))
 
 
 def run_interactive():
     binds = builtins()
     while True:
-        line = input('pylisp>')
-        print(eval_line(binds, parse_all(line)))
+        line = input(PROMPT)
+        try:
+            print(eval_line(binds, parse_line(line)))
+        except KeyError as e:
+            print(f'Unbound: {e}')
+        except SignalEnd as e:
+            print('Unmatched )')
+        except AttributeError as e:
+            print('Non symbol in final position')
+        except Exception as e:
+            print(f'{e.__class__}: {e}')
 
 
 @click.command()
 @click.argument('files', nargs=-1)
-@click.option('-i', '--interactive', 'interactive')
+@click.option('--interactive/--no-interactive', '-i', default=False)
 def run(files, interactive):
     if interactive:
         run_interactive()

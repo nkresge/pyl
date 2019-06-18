@@ -4,8 +4,7 @@ from . pylisp import (
     Symbol,
     builtins,
     eval_line,
-    evaluate,
-    parse_all,
+    eval_expr,
     parse_line,
     tokenize,
 )
@@ -54,18 +53,18 @@ def test_tokenize(given, expect):
     ([[1, 0, Symbol(val='eq?')], [10, 10, Symbol(val='+')], [20, 20, Symbol(val='+')], Symbol(val='if')], 40),
     ([[[[1], Symbol(val='quote')], Symbol(val='atom?')], 1, 0, Symbol(val='if')], 0),
 ])
-def test_evaluate(given, expect):
-    assert evaluate(builtins(), given) == expect
+def test_eval_expr(given, expect):
+    assert eval_expr(builtins(), given) == expect
 
 
 def test_define():
     binds = builtins()
     exprs = [S('pi'), 3.14, S('define')]
-    evaluate(binds, exprs)
+    eval_expr(binds, exprs)
     assert 'pi' in binds
 
 
-def test_parse():
+def test_e2e():
     line = '(pi 3.14 define) (2 pi *)'
     binds = builtins()
     expect = [[Symbol(val='pi'), 3.14, Symbol(val='define')], [2, Symbol(val='pi'), Symbol(val='*')]]
@@ -100,6 +99,5 @@ def test_eval_line(exprs, expect):
 def test_scope():
     line = '(x 1 define) (f (() (x 2 define) lambda) define) (f) x'
     exprs = parse_line(line)
-    print(exprs)
     binds = builtins()
     assert list(filter(None, eval_line(binds, exprs)))[0] == 1
