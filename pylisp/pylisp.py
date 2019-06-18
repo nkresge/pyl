@@ -11,15 +11,18 @@ to do:
     [x] repl
     [x] lambda
     [x] if
-    [ ] lambda functions that recurse themselves (e.g., fib)
-    [ ] scope
-    [ ] split file
+    [x] lambda recurse (e.g., fib)
+    [x] scope
+    [ ] improve repl
+    [ ] add signatures
+    [ ] split implementation into files
 
 """
 from dataclasses import dataclass
 from itertools import chain
 from numbers import Number
-from operator import add, sub, mul, truediv
+from operator import add, sub, mul, truediv, gt
+from pprint import pprint
 from typing import Dict, List, Any
 import fileinput
 import sys
@@ -58,12 +61,14 @@ def is_symbol(value):
 def is_nil(value):
     return value is None
 
+
 def builtins():
     return {
         '+': add,
         '-': sub,
         '*': mul,
         '/': truediv,
+        '>': gt,
         'eq?': lambda a, b: a == b,
         'atom?': lambda a: is_symbol(a) or is_number(a) or is_nil(a),
         'cons': lambda a, b: [a] + b,
@@ -82,17 +87,20 @@ def evaluate(binds, expr):
     if op.val == 'define':  # ('pi' 3.14 define)
         symbol, subexpr = rest[0], rest[1]
         binds[symbol.val] = evaluate(binds, subexpr)
+        pprint(binds)
         return
     if op.val == 'quote':  # ((1 2) quote)
         return rest[0]
-    # not done
     if op.val == 'if':  # (test then else if)
         test, then, else_ = rest
         subexpr = then if evaluate(binds, test) else else_
         return evaluate(binds, subexpr)
-    # not tested
     if op.val == 'lambda':  # e.g., (name (params body lambda) define)
-        params, body = rest
+        try:
+            params, body = rest
+        except ValueError:
+            body = rest
+            params = []
         return Lambda(binds, params, body)
     f = evaluate(binds, op)
     call = [evaluate(binds, subexpr) for subexpr in rest]
@@ -173,6 +181,5 @@ def eval_line(binds, iterable):
 if __name__ == '__main__':
     binds = builtins()
     for exprs in parse_all(fileinput.input()):
-        print(exprs)
         print(eval_line(binds, exprs))
     #sys.stdout.write(output)

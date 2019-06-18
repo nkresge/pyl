@@ -12,7 +12,7 @@ from . pylisp import (
 
 S = Symbol  # shorthand
 
-@pytest.mark.skip
+#@pytest.mark.skip
 @pytest.mark.parametrize('given, expect', [
     ('123 - 1', ['123', '-', '1']),
     ('((1 + 2) + 3)', ['(', '(', '1', '+', '2', ')', '+', '3', ')']),
@@ -35,6 +35,11 @@ def test_tokenize(given, expect):
     ([3, 2, S('eq?')], False),
     ([1, S('atom?')], True),
     ([S('nil'), S('atom?')], True),
+
+    # >
+    ([3, 2, S('>')], True),
+    ([3, 3, S('>')], False),
+    ([3.2, 3.1, S('>')], True),
 
     # quote
     ([1, S('quote')], 1),
@@ -66,6 +71,7 @@ def test_parse():
     expect = [[Symbol(val='pi'), 3.14, Symbol(val='define')], [2, Symbol(val='pi'), Symbol(val='*')]]
     assert parse_line(line) == expect
 
+
 #@pytest.mark.skip
 @pytest.mark.parametrize('line, expect', [
     ('(1 1 +)', [[1, 1, S('+')]]),
@@ -89,3 +95,11 @@ def test_parse_line(line, expect):
 ])
 def test_eval_line(exprs, expect):
     assert list(eval_line(builtins(), exprs)) == expect
+
+
+def test_scope():
+    line = '(x 1 define) (f (() (x 2 define) lambda) define) (f) x'
+    exprs = parse_line(line)
+    print(exprs)
+    binds = builtins()
+    assert list(filter(None, eval_line(binds, exprs)))[0] == 1
