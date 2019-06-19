@@ -17,6 +17,7 @@ to do:
     [x] handling multi file inputs
     [ ] add signatures
     [ ] support for multi line inputs in repl
+    [ ] split files
 
 '''
 import click
@@ -25,7 +26,6 @@ from numbers import Number
 import operator as op
 from typing import Any, Callable, Dict, List
 import fileinput
-import sys
 
 
 PROMPT = 'pyl> '
@@ -60,7 +60,7 @@ def is_symbol(value):
     return isinstance(value, Symbol)
 
 
-def is_nil(value: Any):
+def is_nil(value: Any) -> bool:
     return value is None
 
 
@@ -112,7 +112,7 @@ def eval_expr(binds, expr):
     return f(*call)
 
 
-def tokenize(string):
+def tokenize(string: str):
     token = ''
     for c in string:
         if c == '(' or c == ')':
@@ -197,9 +197,9 @@ def run_interactive():
             print(eval_line(binds, parse_line(line)))
         except KeyError as e:
             print(f'Unbound: {e}')
-        except SignalEnd as e:
+        except SignalEnd:
             print('Unmatched )')
-        except AttributeError as e:
+        except AttributeError:
             print('Non symbol in final position')
         except Exception as e:
             print(e)

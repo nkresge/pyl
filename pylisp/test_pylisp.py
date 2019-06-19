@@ -11,16 +11,16 @@ from . pylisp import (
 
 S = Symbol  # shorthand
 
-#@pytest.mark.skip
+
 @pytest.mark.parametrize('given, expect', [
     ('123 - 1', ['123', '-', '1']),
     ('((1 + 2) + 3)', ['(', '(', '1', '+', '2', ')', '+', '3', ')']),
     ('(1 1 +) (1 2 +)', ['(', '1', '1', '+', ')', '(', '1', '2', '+', ')']),
 ])
 def test_tokenize(given, expect):
-  assert all(t == v for t, v in zip(tokenize(given), expect))
+    assert all(t == v for t, v in zip(tokenize(given), expect))
 
-#@pytest.mark.skip
+
 @pytest.mark.parametrize('given, expect', [
     # arithmetic
     ([1, 1, S('+')], 2),
@@ -66,12 +66,10 @@ def test_define():
 
 def test_e2e():
     line = '(pi 3.14 define) (2 pi *)'
-    binds = builtins()
     expect = [[Symbol(val='pi'), 3.14, Symbol(val='define')], [2, Symbol(val='pi'), Symbol(val='*')]]
     assert parse_line(line) == expect
 
 
-#@pytest.mark.skip
 @pytest.mark.parametrize('line, expect', [
     ('(1 1 +)', [[1, 1, S('+')]]),
     ('(11 11 +)', [[11, 11, S('+')]]),
@@ -85,7 +83,6 @@ def test_parse_line(line, expect):
     assert parse_line(line) == expect
 
 
-#@pytest.mark.skip
 @pytest.mark.parametrize('exprs, expect', [
     ([[1, 1, S('+')], [1, 2, S('+')]], [2, 3]),
     ([[Symbol('pi'), 3.14, S('define')], [Symbol('pi'), 2, S('*')]], [None, 6.28]),
